@@ -7,9 +7,8 @@ from xml.dom import minidom
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "edgetx_xml_secret"
+app.secret_key = "edgetx_dark_mode_secret"
 
-# --- SAFETY GEOGRAPHIC BOUNDS ---
 LAT_MIN, LAT_MAX = 24.396308, 49.384358
 LON_MIN, LON_MAX = -125.0, -66.93457
 MAX_DISTANCE_FROM_START_KM = 50
@@ -51,7 +50,6 @@ def process_logs(df, spacing, max_wps, manual_alt=None):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    # Generate the dynamic timestamp
     timestamp = datetime.now().strftime("%y%m%d_%H%M")
     initial_default_name = f"mission_{timestamp}"
 
@@ -77,7 +75,7 @@ def index():
             ET.SubElement(root, "version", value="25.09.13")
             ET.SubElement(root, "mwp", {
                 "save-date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S-0400"), 
-                "generator": "EdgeTX-to-iNAV-Web"
+                "generator": "EdgeTX-to-iNAV-Web-Dark"
             })
             
             for i, (lat, lon, alt) in enumerate(wps, start=1):
