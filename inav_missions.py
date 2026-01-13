@@ -9,10 +9,6 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "edgetx_dark_mode_secret"
 
-LAT_MIN, LAT_MAX = 24.396308, 49.384358
-LON_MIN, LON_MAX = -125.0, -66.93457
-MAX_DISTANCE_FROM_START_KM = 50
-
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371000 
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -22,30 +18,58 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def process_logs(df, spacing, max_wps, manual_alt=None):
     current_spacing = spacing
+    
     while True:
         waypoints = []
         start_pos = None
         last_wp_pos = None
+        
         for _, row in df.iterrows():
             try:
+                # 1. Parse GPS Column
                 gps_str = str(row['GPS']).strip().replace(',', '')
-                if not gps_str or gps_str == '0': continue
+                if not gps_str or gps_str in ['0', '0 0', '0.0 0.0']: 
+                    continue
+                
                 coords = gps_str.split()
+                if len(coords) < 2: continue
+                
                 lat, lon = float(coords[0]), float(coords[1])
-                if not (LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX): continue
+                
+                # 2. Basic Global Sanity Check (Ignore 0,0 and invalid coords)
+                if lat == 0 and lon == 0: continue
+                if not (-90 <= lat <= 90 and -180 <= lon <= 180): continue
+                
+                # 3. Handle Altitude
                 alt = manual_alt if manual_alt is not None else float(row['Alt(m)'])
+                
+                # 4. Initialize Start Position (First valid GPS lock)
                 if start_pos is None:
                     start_pos = (lat, lon)
                     waypoints.append((lat, lon, alt))
                     last_wp_pos = (lat, lon)
                     continue
-                if haversine(start_pos[0], start_pos[1], lat, lon) > (MAX_DISTANCE_FROM_START_KM * 1000): continue
+
+                # 5. Distance Filtering (Ignore massive sensor jumps > 500km)
+                dist_from_start = haversine(start_pos[0], start_pos[1], lat, lon)
+                if dist_from_start > 500000: continue
+                
+                # 6. Waypoint Spacing logic
                 if haversine(last_wp_pos[0], last_wp_pos[1], lat, lon) >= current_spacing:
                     waypoints.append((lat, lon, alt))
                     last_wp_pos = (lat, lon)
-            except: continue
+            except:
+                continue
+        
+        # If no points found at all, break to avoid infinite loop
+        if not waypoints:
+            return []
+
+        # If we are under the waypoint limit, we are done
         if len(waypoints) <= max_wps or current_spacing > 5000:
             return waypoints
+
+        # Otherwise, increase spacing and try again
         current_spacing += 10
 
 @app.route('/', methods=['GET', 'POST'])
@@ -57,7 +81,7 @@ def index():
         file = request.files.get('file')
         mission_name = request.form.get('mission_name', '').strip() or initial_default_name
         custom_alt = request.form.get('custom_alt')
-        cruise_speed_kmh = float(request.form.get('cruise_speed', '25'))
+        cruise_speed_kmh = float(request.form.get('cruise_speed', '25.0'))
         user_spacing = int(request.form.get('spacing', '100'))
         user_max_wps = int(request.form.get('max_wps', '100'))
         
@@ -70,6 +94,9 @@ def index():
             df = pd.read_csv(file)
             df.columns = df.columns.str.strip()
             wps = process_logs(df, user_spacing, user_max_wps, manual_alt)
+
+            if not wps:
+                return "Error: No valid GPS data found in file. Check that 'GPS' and 'Alt(m)' columns exist and contain data."
 
             root = ET.Element("mission")
             ET.SubElement(root, "version", value="25.09.13")
@@ -90,7 +117,7 @@ def index():
             
             return send_file(mem_file, as_attachment=True, download_name=filename, mimetype="application/octet-stream")
         except Exception as e:
-            return f"Error: {str(e)}"
+            return f"Error processing file: {str(e)}"
 
     return render_template('inav_missions.html', default_name=initial_default_name)
 

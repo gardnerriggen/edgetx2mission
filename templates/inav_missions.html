@@ -10,8 +10,8 @@
         .converter-card { max-width: 850px; margin: 40px auto; border-radius: 12px; border: 1px solid #2d333b; background-color: #161b22; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
         .header-section { background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: white; padding: 25px; border-radius: 12px 12px 0 0; }
         .instruction-box { background-color: #0d1117; border-radius: 8px; padding: 20px; border: 1px solid #30363d; margin-top: 25px; }
-        .form-label { color: #8b949e; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .btn-primary { background-color: #238636; border: none; }
+        .form-label { color: #8b949e; font-size: 0.85rem; text-transform: uppercase; font-weight: bold; }
+        .btn-primary { background-color: #238636; border: none; font-weight: bold; }
         .btn-primary:hover { background-color: #2ea043; }
     </style>
 </head>
@@ -20,62 +20,61 @@
         <div class="card converter-card">
             <div class="header-section text-center">
                 <h2 class="fw-bold">🛰️ EdgeTX to iNAV</h2>
-                <p class="mb-0 opacity-75">Convert Telemetry Logs to iNAV Missions</p>
+                <p class="mb-0 opacity-75">Dark Mode Mission Generator</p>
             </div>
             
             <div class="card-body p-4 p-md-5">
                 <form id="missionForm" action="/" method="post" enctype="multipart/form-data">
                     <div class="mb-4">
-                        <label class="form-label fw-bold">1. Upload Log File (.csv)</label>
+                        <label class="form-label">1. Upload EdgeTX Log (.csv)</label>
                         <input type="file" name="file" class="form-control" accept=".csv" required>
                     </div>
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Mission Name</label>
+                            <label class="form-label">Mission Name</label>
                             <input type="text" id="mission_name" name="mission_name" class="form-control" value="{{ default_name }}">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold">Alt Override (m)</label>
+                            <label class="form-label">Alt Override (m)</label>
                             <input type="number" id="custom_alt" name="custom_alt" class="form-control" placeholder="Log Alt">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold">Speed (km/h)</label>
+                            <label class="form-label">Speed (km/h)</label>
                             <input type="number" step="0.1" id="cruise_speed" name="cruise_speed" class="form-control" value="25.0">
                         </div>
                     </div>
 
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Min Spacing (meters)</label>
+                            <label class="form-label">Min Spacing (meters)</label>
                             <input type="number" id="spacing" name="spacing" class="form-control" value="100">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Waypoint Limit</label>
+                            <label class="form-label">Waypoint Limit</label>
                             <input type="number" id="max_wps" name="max_wps" class="form-control" value="100">
                         </div>
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg flex-grow-1">Generate Mission</button>
+                        <button type="submit" class="btn btn-primary btn-lg flex-grow-1">Generate .mission File</button>
                         <button type="button" onclick="resetForm()" class="btn btn-outline-secondary btn-lg">Reset</button>
                     </div>
                 </form>
 
                 <div class="instruction-box mt-5">
-                    <h5 class="text-white mb-3">📖 Usage Tips & Instructions</h5>
+                    <h5 class="text-white mb-3 small fw-bold">📖 USER TIPS</h5>
                     <ul class="small text-secondary mb-0">
-                        <li><strong>Data Cleaning:</strong> Any points outside the Contiguous USA or more than 50km from your start point are automatically ignored.</li>
-                        <li><strong>Spacing:</strong> If the chosen spacing results in too many points for your limit, the converter will automatically increase spacing until it fits.</li>
-                        <li><strong>Altitude:</strong> Leave the override blank to use the log's recorded altitude. Use the override to ensure a safe terrain clearance (e.g. 90m).</li>
-                        <li><strong>Hardware Limits:</strong> For F4 flight controllers, keep the Waypoint Limit at 60. F7/H7 boards can usually handle 100+.</li>
-                        <li><strong>MWP Compatibility:</strong> The downloaded file is in XML format compatible with mwp and iNAV Mission Planner.</li>
+                        <li><strong>Global Support:</strong> This tool works worldwide. It automatically filters out pre-lock "0 0" coordinates.</li>
+                        <li><strong>Smart Spacing:</strong> If your flight is too long for your Waypoint Limit, the tool will automatically increase spacing to make it fit.</li>
+                        <li><strong>Altitude:</strong> Leave blank to use log altitude. If your log uses Baro altitude, an override is recommended for safety.</li>
+                        <li><strong>CSV Headers:</strong> Ensure your log has columns named <code>GPS</code> and <code>Alt(m)</code>.</li>
                     </ul>
                 </div>
             </div>
         </div>
-        <div class="text-center mt-3 text-secondary-50 small">
-            <p>Processed in-memory. No data is stored on this server.</p>
+        <div class="text-center mt-3 text-secondary small opacity-50">
+            <p>Privacy: Files are processed in-memory and never stored.</p>
         </div>
     </div>
 
