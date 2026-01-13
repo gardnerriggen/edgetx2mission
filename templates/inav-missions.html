@@ -6,7 +6,7 @@
     <title>EdgeTX to iNAV Converter</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, sans-serif; }
         .converter-card { max-width: 800px; margin: 50px auto; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: none; }
         .header-section { background: #0d6efd; color: white; padding: 30px; border-radius: 15px 15px 0 0; text-align: center; }
         .btn-custom { padding: 12px 25px; font-weight: 600; }
@@ -17,7 +17,7 @@
         <div class="card converter-card">
             <div class="header-section">
                 <h2>🛰️ iNAV Mission Creator</h2>
-                <p class="mb-0 text-white-50">Convert EdgeTX CSV logs to .mission XML files</p>
+                <p class="mb-0 text-white-50">Convert EdgeTX logs to editable .mission files</p>
             </div>
             <div class="card-body p-4 p-md-5">
                 <form id="missionForm" action="/" method="post" enctype="multipart/form-data">
@@ -29,7 +29,7 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Mission Name</label>
-                            <input type="text" id="mission_name" name="mission_name" class="form-control" placeholder="Flight_Replay">
+                            <input type="text" id="mission_name" name="mission_name" class="form-control" value="{{ default_name }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Altitude (m)</label>
@@ -54,12 +54,12 @@
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary btn-lg flex-grow-1 btn-custom">Generate & Download</button>
-                        <button type="button" onclick="resetForm()" class="btn btn-outline-secondary btn-lg btn-custom">Reset</button>
+                        <button type="button" onclick="resetForm()" class="btn btn-outline-secondary btn-lg btn-custom">Reset Defaults</button>
                     </div>
                 </form>
             </div>
             <div class="card-footer bg-light text-center text-muted small py-3">
-                Built for iNAV & mwp | Files processed in-memory (not stored)
+                Built for iNAV | Editable timestamped filenames
             </div>
         </div>
     </div>
@@ -67,11 +67,11 @@
     <script>
         function resetForm() {
             document.getElementById("missionForm").reset();
-            // Reset fields manually to ensure defaults are correct
+            // Manually resetting values to the initial server-provided defaults
+            document.getElementById("mission_name").value = "{{ default_name }}";
             document.getElementById("cruise_speed").value = "25.0";
             document.getElementById("spacing").value = "100";
             document.getElementById("max_wps").value = "100";
-            document.getElementById("mission_name").value = "";
             document.getElementById("custom_alt").value = "";
         }
     </script>
