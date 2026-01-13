@@ -8,6 +8,26 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='inav_missions.css') }}">
 </head>
 <body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger">
+          <div class="modal-header border-bottom-0">
+            <h5 class="modal-title text-danger">⚠️ Processing Error</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body text-center">
+            <p>{{ messages[0] }}</p>
+          </div>
+          <div class="modal-footer border-top-0 justify-content-center">
+            <button type="button" class="btn btn-danger px-5" data-bs-dismiss="modal">Try Again</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endwith %}
     <div class="container">
         <div class="card converter-card">
             <div id="loadingOverlay">
@@ -49,7 +69,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Speed (<span class="unit-speed">km/h</span>)</label>
-                            <input type="number" step="0.1" id="cruise_speed" name="cruise_speed" class="form-control" value="25.0">
+                            <input type="number" step="0.1" id="cruise_speed" name="cruise_speed" class="form-control" value="30.0">
                         </div>
                     </div>
 
