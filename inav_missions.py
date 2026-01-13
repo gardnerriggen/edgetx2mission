@@ -16,60 +16,37 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-def process_logs(df, spacing, max_wps, manual_alt=None):
-    current_spacing = spacing
-    
+def process_logs(df, spacing_m, max_wps, manual_alt_m=None):
+    current_spacing = spacing_m
     while True:
         waypoints = []
         start_pos = None
         last_wp_pos = None
-        
         for _, row in df.iterrows():
             try:
-                # 1. Parse GPS Column
                 gps_str = str(row['GPS']).strip().replace(',', '')
-                if not gps_str or gps_str in ['0', '0 0', '0.0 0.0']: 
-                    continue
-                
+                if not gps_str or gps_str in ['0', '0 0', '0.0 0.0']: continue
                 coords = gps_str.split()
-                if len(coords) < 2: continue
-                
                 lat, lon = float(coords[0]), float(coords[1])
-                
-                # 2. Basic Global Sanity Check (Ignore 0,0 and invalid coords)
-                if lat == 0 and lon == 0: continue
                 if not (-90 <= lat <= 90 and -180 <= lon <= 180): continue
                 
-                # 3. Handle Altitude
-                alt = manual_alt if manual_alt is not None else float(row['Alt(m)'])
+                alt = manual_alt_m if manual_alt_m is not None else float(row['Alt(m)'])
                 
-                # 4. Initialize Start Position (First valid GPS lock)
                 if start_pos is None:
                     start_pos = (lat, lon)
                     waypoints.append((lat, lon, alt))
                     last_wp_pos = (lat, lon)
                     continue
 
-                # 5. Distance Filtering (Ignore massive sensor jumps > 500km)
-                dist_from_start = haversine(start_pos[0], start_pos[1], lat, lon)
-                if dist_from_start > 500000: continue
-                
-                # 6. Waypoint Spacing logic
+                if haversine(start_pos[0], start_pos[1], lat, lon) > 500000: continue
                 if haversine(last_wp_pos[0], last_wp_pos[1], lat, lon) >= current_spacing:
                     waypoints.append((lat, lon, alt))
                     last_wp_pos = (lat, lon)
-            except:
-                continue
+            except: continue
         
-        # If no points found at all, break to avoid infinite loop
-        if not waypoints:
-            return []
-
-        # If we are under the waypoint limit, we are done
+        if not waypoints: return []
         if len(waypoints) <= max_wps or current_spacing > 5000:
             return waypoints
-
-        # Otherwise, increase spacing and try again
         current_spacing += 10
 
 @app.route('/', methods=['GET', 'POST'])
@@ -80,30 +57,32 @@ def index():
     if request.method == 'POST':
         file = request.files.get('file')
         mission_name = request.form.get('mission_name', '').strip() or initial_default_name
-        custom_alt = request.form.get('custom_alt')
-        cruise_speed_kmh = float(request.form.get('cruise_speed', '25.0'))
-        user_spacing = int(request.form.get('spacing', '100'))
+        unit_system = request.form.get('unit_system', 'metric')
+        
+        raw_alt = request.form.get('custom_alt')
+        raw_speed = float(request.form.get('cruise_speed', '25.0'))
+        raw_spacing = int(request.form.get('spacing', '100'))
         user_max_wps = int(request.form.get('max_wps', '100'))
-        
-        if not file: return "No file uploaded"
-        
-        speed_cms = int(cruise_speed_kmh * 100000 / 3600)
-        manual_alt = float(custom_alt) if custom_alt and custom_alt.strip() != "" else None
-        
+
+        if unit_system == 'imperial':
+            manual_alt_m = float(raw_alt) * 0.3048 if raw_alt else None
+            spacing_m = raw_spacing * 0.3048
+            speed_cms = int(raw_speed * 44.704)
+        else:
+            manual_alt_m = float(raw_alt) if raw_alt else None
+            spacing_m = raw_spacing
+            speed_cms = int(raw_speed * 100000 / 3600)
+
         try:
             df = pd.read_csv(file)
             df.columns = df.columns.str.strip()
-            wps = process_logs(df, user_spacing, user_max_wps, manual_alt)
+            wps = process_logs(df, spacing_m, user_max_wps, manual_alt_m)
 
-            if not wps:
-                return "Error: No valid GPS data found in file. Check that 'GPS' and 'Alt(m)' columns exist and contain data."
+            if not wps: return "No valid GPS data found."
 
             root = ET.Element("mission")
             ET.SubElement(root, "version", value="25.09.13")
-            ET.SubElement(root, "mwp", {
-                "save-date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S-0400"), 
-                "generator": "EdgeTX-to-iNAV-Web-Dark"
-            })
+            ET.SubElement(root, "mwp", {"save-date": datetime.now().isoformat(), "generator": "EdgeTX-to-iNAV-DualUnit"})
             
             for i, (lat, lon, alt) in enumerate(wps, start=1):
                 ET.SubElement(root, "missionitem", {
@@ -113,11 +92,9 @@ def index():
 
             xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(indent="  ")
             mem_file = io.BytesIO(xml_str.encode('utf-8'))
-            filename = mission_name if mission_name.lower().endswith('.mission') else f"{mission_name}.mission"
-            
-            return send_file(mem_file, as_attachment=True, download_name=filename, mimetype="application/octet-stream")
+            return send_file(mem_file, as_attachment=True, download_name=f"{mission_name}.mission", mimetype="application/octet-stream")
         except Exception as e:
-            return f"Error processing file: {str(e)}"
+            return f"Error: {str(e)}"
 
     return render_template('inav_missions.html', default_name=initial_default_name)
 
